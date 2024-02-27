@@ -1,6 +1,8 @@
 # FunFM-logue
 exploration oscillator for KORG Logue platform
 
+https://www.youtube.com/watch?v=Je-KoZBqLsE
+
 ![](blocks.png "structure")
 
 Consists of 2 extended range alias supressed FM operators with variable waveshape.
@@ -13,11 +15,11 @@ the output is an x-fade between op1 and op2, the value is then used as feedback 
 
 - Shape - high resolution op1 pitch offset
 - Alt - high resolution op2 pitch offset
-- 1bw - op1 bandwidth: -100 - pulse, 0 - sine (parabolic approximation), +100 - saw
-- 1pm - op1 by op2 phase modulation depth: -100 - absolute "odd", +100 - bipolar "even" 
+- 1bw - op1 bandwidth
+- 1pm - op1 by op2 phase modulation depth
 - 2bw - op2 bandwidth
-- 2fb - op2 by feedback modulation depth
-- mix - OP1
+- 2fb - op2 by feedback phase modulation depth
+- mix - crossfade between operators
 
 LFO shape is routed to 1pm
 
@@ -35,6 +37,6 @@ The idea was born after meeting KORG Opsix. Despite the relatively convenient co
 
 ### Note
 
-The NTS-1 initializes the parameters to -100, so the first sound you hear will be the harsh noise resulting from maximum PM and feedback. I recommend starting by setting the depths and pitches to the middle. The pitch range is intentionally wide, and the extremes are quite random. Please use your ears to adjust the settings. In general, the oscillator is capable of producing classic VA tones (detuned SAW, PWM, hardsync), but the main goal is to search for something new. Stay open to new things.
+The NTS-1 initializes the parameters to -100, so the first sound you hear will be the harsh noise resulting from maximum PM and feedback. I recommend starting by setting the depths and pitches to the middle. The pitch range is intentionally wide, and the extremes are quite random. Please use your ears to adjust the settings. In general, the oscillator is capable of producing classic VA tones (detuned SAW, PWM, hardsync), but the main goal is to search for something new. Stay open to new things)
 
 Peace!
