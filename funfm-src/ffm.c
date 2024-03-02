@@ -18,10 +18,10 @@
 #include "osc_api.h"
 #include "operator.h"
 #include "scale12.h"
+#include "filter_lp6db.h"
 
-uint8_t osc_notecounter; // wtf, i don't have keyboard to test this!
 float note;
-float patch_glide;
+float patch_filter;
 float patch_op1pitch;
 float patch_op1bw;
 float patch_op1pm;
@@ -39,7 +39,7 @@ float patch_mix;
 #define RANGE_O1PM_MAX_FBK 0.5f
 #define RANGE_O2PM 1.1f
 #define RANGE_MIX 1.f
-#define RANGE_GLIDE 1.f
+#define RANGE_FILTER 96.f
 
 void OSC_INIT(uint32_t platform, uint32_t api)
 {
@@ -50,15 +50,15 @@ void OSC_INIT(uint32_t platform, uint32_t api)
     // FPU->FPDSCR &= ~(1UL << 12);
     // FPU->FPDSCR &= ~(1UL << 10);
     // FPU->FPDSCR &= ~(1UL << 8);
-    osc_notecounter = 0;
 }
 
 // instance
 static int32_t in_o1acc;
-static int32_t in_o1pm_prev;
 static int32_t in_o2acc;
+static int32_t in_o1pm_prev;
 static int32_t in_o2pm_prev;
 static float in_feedback;
+static float filter_state;
 
 // blocksize 64
 void OSC_CYCLE(const user_osc_param_t* const params, int32_t* yn, const uint32_t frames)
@@ -66,10 +66,11 @@ void OSC_CYCLE(const user_osc_param_t* const params, int32_t* yn, const uint32_t
     float pitch = (float)(params->pitch) * (1.f / 256.f);
     float lfo = q31_to_f32(params->shape_lfo);
     // pitch filter coefficient for 750Hz CR
-    // const float glide_cf = osc_notecounter > 1 ? 1.f : 0.f;
     //
     float op1speed = scale12EdoGetFreqHz(pitch + patch_op1pitch) * k_samplerate_recipf;
     float op2speed = scale12EdoGetFreqHz(pitch + patch_op2pitch) * k_samplerate_recipf;
+    float filter_f = scale12EdoGetFreqHz(pitch + patch_filter);
+
     int32_t op1inc = (int32_t)(op1speed * 2147483648.f);
     int32_t op2inc = (int32_t)(op2speed * 2147483648.f);
     float op2pm = patch_op2pm * patch_op2pm;
@@ -104,6 +105,9 @@ void OSC_CYCLE(const user_osc_param_t* const params, int32_t* yn, const uint32_t
         op2amp_comp1 = bwAmpComp(op2bw);
         op2amp_comp2 = 0;
     }
+    float flt_w = fltLP6GetW(filter_f, k_samplerate_recipf);
+    float flt_m = fltLP6GetM(flt_w);
+    float flt_r = fltLP6GetR(flt_w);
 
     float op1amp_mix = patch_mix;
     float op2amp_mix = 1.f - op1amp_mix;
@@ -119,7 +123,8 @@ void OSC_CYCLE(const user_osc_param_t* const params, int32_t* yn, const uint32_t
         float o1pm = (patch_op1pm < 0 ? fabsf(o2) : o2) * op1pm;
         float o1 = operatorDoubleSmpl(&in_o1acc, &in_o1pm_prev, o1pm, op1inc, op1speed, op1bw, 0x80000000, op1amp_comp1, op1amp_comp2);
         float out = o1 * op1amp_mix + o2 * op2amp_mix;
-        fb = out;
+        float flt = fltLP6CalcSmpl(&filter_state, out, flt_m, flt_r);
+        fb = flt;
         *(y++) = f32_to_q31(out);
     }
 
@@ -129,13 +134,10 @@ void OSC_CYCLE(const user_osc_param_t* const params, int32_t* yn, const uint32_t
 void OSC_NOTEON(const user_osc_param_t* const params)
 {
     (void)params;
-    osc_notecounter++;
 }
 void OSC_NOTEOFF(const user_osc_param_t* const params)
 {
     (void)params;
-    if (osc_notecounter)
-        osc_notecounter--;
 }
 
 void OSC_PARAM(uint16_t index, uint16_t value)
@@ -170,8 +172,8 @@ void OSC_PARAM(uint16_t index, uint16_t value)
         patch_mix = (float)value * (RANGE_MIX / 200.f);
         break;
     case k_user_osc_param_id6:
-        // glide
-        patch_glide = (float)value * (RANGE_GLIDE / 100.f);
+        // feedback filter
+        patch_filter = (float)value * (RANGE_FILTER * 2.f / 200.f) - RANGE_FILTER;
         break;
     default:
         break;

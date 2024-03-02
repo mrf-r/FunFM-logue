@@ -20,6 +20,7 @@ the output is an x-fade between op1 and op2, the value is then used as feedback 
 - 2bw - op2 bandwidth
 - 2fb - op2 by feedback phase modulation depth
 - mix - crossfade between operators
+- fblp - feedback 1st order low pass filter
 
 LFO shape is routed to 1pm
 
