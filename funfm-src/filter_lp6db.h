@@ -19,38 +19,40 @@
 #define _FILTER_LP6DB_H
 
 #include "osc_api.h"
-// #include <math.h>
-// #ifndef M_PI
-// #define M_PI 3.14159265358979323846
-// #endif
+// #define k_samplerate 48000
+// #define k_samplerate_recipf (1.f/48000.f)
 
-static inline float fltLP6GetW(const float freq, const float sr_recp)
+typedef struct
 {
-    float f_lim = freq < 1.f ? 1.f : freq;
-    float ret = sr_recp * f_lim;
-    if (ret > 0.48f)
-        ret = 0.48f;
-    ret = osc_tanpif(ret); // tanf(M_PI * ret)
-    return ret;
+    float a;
+    float b;
+    float zi;
+    float state;
+} Filter6db_state;
+
+static inline void fltLP6Precalc(Filter6db_state *const state, float freq)
+{
+    if (freq > (float)(k_samplerate / 2))
+    {
+        freq = (float)(k_samplerate / 2);
+    }
+    float c = k_samplerate_recipf * freq / 2.f;
+    state->a = (1 - c) / (1 + c);
+    state->b = c / (1 + c);
 }
 
-static inline float fltLP6GetM(const float w)
-{
-    return (w - 1.f) / w;
+static inline void fltLP6PInit(Filter6db_state *const state) {
+    state->state = 0.f;
+    state->zi = 0.f;
+    fltLP6Precalc(state, k_samplerate / 2);
 }
 
-static inline float fltLP6GetR(const float w)
+static inline float fltLP6CalcSmpl(Filter6db_state *const state, const float in)
 {
-    return w / (1.f + w);
-}
-
-static inline float fltLP6CalcSmpl(float* const state, const float in, const float m, const float r)
-{
-    float s = *state;
-    float z = (in - s * m) * r;
-    float out = z + s;
-    *state = z;
-    return out;
+    float s = state->a * state->state + state->b * (in + state->zi);
+    state->zi = in;
+    state->state = s;
+    return s;
 }
 
 #endif // _FILTER_LP6DB_H
